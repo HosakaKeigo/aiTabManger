@@ -3,58 +3,80 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchBtn = document.getElementById("searchBtn");
   const queryInput = document.getElementById("query");
   const loadingElement = document.getElementById("loading");
+  const errorMessage = document.getElementById("errorMessage");
 
-  // Enter キーのサポート
+  function showError(message) {
+    errorMessage.textContent = message;
+    errorMessage.classList.add("active");
+    queryInput.classList.add("error");
+
+    setTimeout(() => {
+      errorMessage.classList.remove("active");
+      queryInput.classList.remove("error");
+    }, 3000);
+  }
+
+  function clearError() {
+    errorMessage.classList.remove("active");
+    queryInput.classList.remove("error");
+  }
+
   queryInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
       searchTabs();
     }
   });
 
+  queryInput.addEventListener("input", clearError);
   searchBtn.addEventListener("click", searchTabs);
 
   async function searchTabs() {
+    clearError();
+
     try {
-      // APIキーを取得
+      // APIキーの取得と検証
       const result = await chrome.storage.sync.get(['geminiApiKey']);
       if (!result.geminiApiKey) {
-        alert('Please set your Gemini API key in the extension options.');
-        // オプションページを開く
+        showError('APIキーが設定されていません。設定画面で設定してください。');
         chrome.runtime.openOptionsPage();
         return;
       }
 
+      // 検索クエリの検証
       const query = queryInput.value.trim();
-      if (!query) return;
+      if (!query) {
+        showError('検索キーワードを入力してください');
+        return;
+      }
 
       loadingElement.classList.add("active");
       
-      // 全てのタブ情報を取得
+      // タブ情報の取得
       const tabs = await chrome.tabs.query({});
-      
-      // タブ情報を整形
       const tabsInfo = tabs.map(tab => ({
         id: tab.id,
         title: tab.title || "",
         url: tab.url || ""
       }));
 
-      // APIリクエストの準備
+      // Gemini APIリクエストの準備
       const requestBody = {
         contents: [{
           role: "user",
           parts: [{
-            text: `
-              ユーザーのクエリ: "${query}"
-              
-              以下のタブリストから、ユーザーのクエリに最も関連性の高いタブを選択してください：
-              ${JSON.stringify(tabsInfo, null, 2)}
-              
-              タブの選択基準:
-              1. タイトルとURLの意味的な関連性
-              2. キーワードの部分一致
-              3. 文脈的な類似性
-            `
+            text: `ユーザーの検索キーワード「${query}」に最も関連性の高いタブを選んでください。
+
+現在開いているタブのリスト:
+${JSON.stringify(tabsInfo, null, 2)}
+
+以下の形式でJSONを返してください:
+
+{
+  "selected_tab": {
+    "tab_id": [タブのID],
+  }
+}
+`
           }]
         }],
         generationConfig: {
@@ -69,8 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
               selected_tab: {
                 type: "object",
                 properties: {
-                  tab_id: { type: "number" },
-                  reason: { type: "string" }
+                  tab_id: { type: "number", nullable:true },
                 }
               }
             }
@@ -78,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       };
 
-      // Gemini APIを呼び出し
+      // Gemini APIの呼び出し
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${result.geminiApiKey}`,
         {
@@ -89,36 +110,57 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify(requestBody)
         }
       );
+      console.log('API Request:', requestBody);
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error('APIリクエストが失敗しました');
       }
 
       const apiResult = await response.json();
       console.log('API Response:', apiResult);
 
-      // レスポンスからJSONを抽出
-      const candidateText = apiResult.candidates[0]?.content?.parts[0]?.text;
+      // レスポンスの解析
+      const candidateText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!candidateText) {
-        throw new Error('No valid response from API');
+        throw new Error('APIレスポンスの形式が不正です');
       }
 
-      const selectedTab = JSON.parse(candidateText).selected_tab;
+      // JSONのパース
+      let parseResult;
+      try {
+        parseResult = JSON.parse(candidateText.trim());
+      } catch (e) {
+        console.error('JSON Parse Error:', e);
+        console.error('Raw Text:', candidateText);
+        throw new Error('APIレスポンスのパースに失敗しました');
+      }
+
+      // タブが見つからなかった場合
+      if (!parseResult.selected_tab || !parseResult.selected_tab.tab_id) {
+        showError(`「${query}」に関連するタブが見つかりませんでした`);
+        return;
+      }
+
+      // タブの存在確認
+      const selectedTab = parseResult.selected_tab;
+      const tab = tabs.find(t => t.id === selectedTab.tab_id);
       
-      // 選択されたタブに切り替え
-      if (selectedTab && selectedTab.tab_id) {
-        const tab = tabs.find(t => t.id === selectedTab.tab_id);
-        if (tab) {
-          await chrome.tabs.update(tab.id, { active: true });
-          await chrome.windows.update(tab.windowId, { focused: true });
-          console.log('Tab switched. Reason:', selectedTab.reason);
-        }
+      if (!tab) {
+        console.error('Selected tab not found:', selectedTab);
+        throw new Error('選択されたタブが見つかりません');
       }
 
+      // タブの切り替え
+      await chrome.tabs.update(tab.id, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+      console.log('Tab switched');
       window.close();
+
     } catch (e) {
-      console.error('Error during tab search:', e);
-      alert('An error occurred. Please check the console for details.');
+      console.error('Error:', e);
+      showError(e.message || 'エラーが発生しました');
     } finally {
       loadingElement.classList.remove("active");
     }
