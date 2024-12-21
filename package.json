@@ -1,0 +1,10 @@
+{
+  "name": "ai-tab-manager",
+  "version": "1.0.0",
+  "description": "AI-powered tab manager using Gemini",
+  "main": "background.js",
+  "dependencies": {
+    "@google/generative-ai": "^0.1.0"
+  },
+  "type": "module"
+}

@@ -1,0 +1,37 @@
+{
+  "name": "AI Tab Manager",
+  "version": "1.0",
+  "manifest_version": 3,
+  "description": "自然言語でタブを切り替えるデモ拡張機能",
+
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html"
+  },
+
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X"
+      },
+      "description": "Open the Tab Switcher popup"
+    }
+  }
+}

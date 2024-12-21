@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AI Tab Manager</title>
+    <style>
+      body {
+        margin: 10px;
+        font-family: sans-serif;
+        min-width: 250px;
+      }
+      #query {
+        width: 200px;
+        padding: 5px;
+        margin-bottom: 10px;
+      }
+      #searchBtn {
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      .loading {
+        display: none;
+        margin-top: 10px;
+      }
+      .loading.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="text" id="query" placeholder="タブ名やキーワード" />
+    <button id="searchBtn">切り替え</button>
+    <div id="loading" class="loading">検索中...</div>
+
+    <script src="gemini-client.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
