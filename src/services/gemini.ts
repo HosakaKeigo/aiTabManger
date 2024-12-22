@@ -1,4 +1,4 @@
-import { TabInfo, SearchResult, ParsedResponse } from '../types';
+import { SearchResult, ParsedResponse } from '../types';
 import { BookmarkInfo } from './bookmark';
 
 export class GeminiService {
@@ -15,9 +15,7 @@ export class GeminiService {
         }]
       }],
       generationConfig: {
-        temperature: 0.3,
-        topK: 40,
-        topP: 0.95,
+        temperature: 0,
         maxOutputTokens: 8192,
         responseMimeType: "application/json",
         responseSchema: {
@@ -32,10 +30,9 @@ export class GeminiService {
                   id: { type: "number" },
                   title: { type: "string" },
                   url: { type: "string" },
-                  score: { type: "number" },
-                  reason: { type: "string" }
+                  score: { type: "number" }
                 },
-                required: ["type", "id", "title", "url", "score", "reason"]
+                required: ["type", "id", "title", "url", "score"]
               }
             }
           },
