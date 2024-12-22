@@ -25,6 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
   elements.queryInput.addEventListener("input", () => uiHelper.clearError());
   elements.searchBtn.addEventListener("click", () => void searchContent());
 
+  elements.queryInput.focus();
+
   async function searchContent(): Promise<void> {
     uiHelper.clearError();
 
