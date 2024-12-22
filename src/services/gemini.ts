@@ -79,7 +79,7 @@ export class GeminiService {
 
   private buildPrompt(query: string, tabs: chrome.tabs.Tab[], bookmarks: BookmarkInfo[]): string {
     return `ユーザーの検索キーワード「${query}」に関連するタブとブックマークを探してください。
-関連度が高い順に最大5件まで候補を返してください。
+関連度が高い順に最大3件まで候補を返してください。
 それぞれの候補について、関連度を0-100のスコアで示し、選んだ理由も付けてください。
 
 現在開いているタブのリスト:
@@ -95,9 +95,8 @@ ${JSON.stringify(bookmarks, null, 2)}
       "type": "tab" または "bookmark",
       "id": タブIDまたはブックマークID,
       "title": "タイトル",
-      "url": "URL",
+      "url": "URL", // typeがtabの場合は空文字列
       "score": 0-100の関連度スコア,
-      "reason": "選択した理由の説明"
     },
     ...
   ]

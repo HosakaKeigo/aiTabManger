@@ -48,6 +48,7 @@ export class UIHelper {
           <div class="result-content">
             <div class="title">${this.escapeHtml(result.title)}</div>
             <div class="url">${this.escapeHtml(result.url)}</div>
+            <div class="score">関連度: ${result.score}</div>
           </div>
         </div>
       `)
