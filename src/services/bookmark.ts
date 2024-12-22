@@ -1,5 +1,4 @@
 export interface BookmarkInfo {
-  id: string;
   title: string;
   url: string;
 }
@@ -13,7 +12,6 @@ export class BookmarkService {
       return bookmarks
         .filter(bookmark => bookmark.url)
         .map(bookmark => ({
-          id: bookmark.id,
           title: bookmark.title || "",
           url: bookmark.url || ""
         }));
