@@ -1,6 +1,7 @@
 import { UIElements } from '../types';
 import { GeminiService } from '../services/gemini';
 import { TabService } from '../services/tab';
+import { BookmarkService } from '../services/bookmark';
 import { UIHelper } from '../utils/ui-helper';
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -13,22 +14,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const uiHelper = new UIHelper(elements);
   const tabService = new TabService();
+  const bookmarkService = new BookmarkService();
 
-  // イベントリスナーの設定
   elements.queryInput.addEventListener("keypress", (e: KeyboardEvent) => {
     if (e.key === "Enter") {
-      void searchTabs();
+      void searchContent();
     }
   });
 
   elements.queryInput.addEventListener("input", () => uiHelper.clearError());
-  elements.searchBtn.addEventListener("click", () => void searchTabs());
+  elements.searchBtn.addEventListener("click", () => void searchContent());
 
-  async function searchTabs(): Promise<void> {
+  async function searchContent(): Promise<void> {
     uiHelper.clearError();
 
     try {
-      // APIキーの取得と検証
       const result = await chrome.storage.sync.get(['geminiApiKey']);
       if (!result.geminiApiKey) {
         uiHelper.showError('APIキーが設定されていません。設定画面で設定してください。');
@@ -44,32 +44,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
       uiHelper.showLoading();
 
-      // タブ情報の取得
-      const tabs = await chrome.tabs.query({});
-      const tabsInfo = await tabService.getAllTabs();
+      // タブとブックマークの情報を取得
+      const [tabs, bookmarks] = await Promise.all([
+        tabService.getAllTabs(),
+        bookmarkService.getAll()
+      ]);
 
-      // Gemini APIで関連タブを検索
+      // Gemini APIで検索
       const geminiService = new GeminiService(result.geminiApiKey);
-      const parseResult = await geminiService.findRelevantTab(query, tabsInfo);
+      const searchResult = await geminiService.findContent(query, tabs, bookmarks);
 
-      // タブが見つからなかった場合
-      if (!parseResult?.selected_tab) {
-        uiHelper.showError(`「${query}」に関連するタブが見つかりませんでした`);
-        return;
+      // タブが見つかった場合
+      if (searchResult.selectedTab) {
+        const tab = await tabService.findTabById(tabs, searchResult.selectedTab.tab_id);
+        if (tab && tab.id) {
+          await tabService.switchToTab(tab.id, tab.windowId);
+          console.log('Tab switched');
+          window.close();
+          return;
+        }
       }
 
-      // タブの存在確認と切り替え
-      const selectedTab = parseResult.selected_tab;
-      const tab = await tabService.findTabById(tabs, selectedTab.tab_id);
-
-      if (!tab || !tab.id) {
-        console.error('Selected tab not found:', selectedTab);
-        throw new Error('選択されたタブが見つかりません');
+      // ブックマークが見つかった場合
+      if (searchResult.selectedBookmark?.url) {
+        const newTab = await bookmarkService.openBookmarkInNewTab(searchResult.selectedBookmark.url);
+        if (newTab) {
+          console.log('Bookmark opened in new tab');
+          window.close();
+          return;
+        }
       }
 
-      await tabService.switchToTab(tab.id, tab.windowId);
-      console.log('Tab switched');
-      window.close();
+      // 何も見つからなかった場合
+      uiHelper.showError(`「${query}」に関連するタブやブックマークが見つかりませんでした`);
 
     } catch (e) {
       console.error('Error:', e);

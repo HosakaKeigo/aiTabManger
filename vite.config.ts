@@ -9,7 +9,7 @@ const manifest = defineManifest({
   permissions: [
     "tabs",
     "storage",
-    "notifications"
+    "bookmarks"
   ],
   host_permissions: [
     "https://generativelanguage.googleapis.com/*"

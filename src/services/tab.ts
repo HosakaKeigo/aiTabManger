@@ -1,13 +1,7 @@
-import { TabInfo } from '../types';
-
 export class TabService {
-  async getAllTabs(): Promise<TabInfo[]> {
+  async getAllTabs(): Promise<chrome.tabs.Tab[]> {
     const tabs = await chrome.tabs.query({});
-    return tabs.map(tab => ({
-      id: tab.id ?? -1,
-      title: tab.title || "",
-      url: tab.url || ""
-    }));
+    return tabs
   }
 
   async switchToTab(tabId: number, windowId?: number): Promise<void> {

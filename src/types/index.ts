@@ -1,9 +1,3 @@
-export interface TabInfo {
-  id: number;
-  title: string;
-  url: string;
-}
-
 export interface GeminiResponse {
   candidates?: Array<{
     content?: {
