@@ -5,9 +5,10 @@ AI Tab Manager is a Chrome extension that helps you find and switch tabs using n
 ## Features
 
 - Search tabs using natural language
-- Quick tab switching with keyboard shortcuts (Ctrl+Shift+X)
-- AI-powered tab relevance matching
-- Simple and intuitive interface
+- Multiple results with relevance ranking
+- Fallback to bookmarks when tab isn't found
+- Keyboard shortcuts and navigation
+- Simple and clean interface
 
 ## Installation
 
@@ -42,10 +43,10 @@ npm run build
 
 ## Usage
 
-1. Click the extension icon or press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (Mac)
-2. Type your query in natural language (e.g., "find my GitHub tab" or "switch to the documentation")
-3. Press Enter or click the search button
-4. The extension will automatically switch to the most relevant tab
+1. Press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (Mac)
+2. Type your search query
+3. Select from search results using arrow keys or mouse
+4. Press Enter to switch to the selected tab or open bookmark
 
 ## Development
 
@@ -60,17 +61,9 @@ src/
 └── utils/         # Helper utilities
 ```
 
-### Development Commands
-- `npm run dev`: Start development mode with hot reload
+### Commands
+- `npm run dev`: Start development mode
 - `npm run build`: Build for production
-- `npm run preview`: Preview production build
-
-## Technical Stack
-
-- TypeScript
-- Vite
-- CRXJS (Chrome Extension Development)
-- Google Gemini AI API
 
 ## Requirements
 
