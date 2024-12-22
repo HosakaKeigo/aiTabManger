@@ -1,4 +1,4 @@
-import { UIElements } from '../types';
+import { UIElements, SearchResult } from '../types';
 import { GeminiService } from '../services/gemini';
 import { TabService } from '../services/tab';
 import { BookmarkService } from '../services/bookmark';
@@ -9,7 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
     searchBtn: document.getElementById("searchBtn") as HTMLButtonElement,
     queryInput: document.getElementById("query") as HTMLInputElement,
     loadingElement: document.getElementById("loading") as HTMLDivElement,
-    errorMessage: document.getElementById("errorMessage") as HTMLDivElement
+    errorMessage: document.getElementById("errorMessage") as HTMLDivElement,
+    resultsList: document.getElementById("resultsList") as HTMLDivElement
   };
 
   const uiHelper = new UIHelper(elements);
@@ -22,13 +23,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  elements.queryInput.addEventListener("input", () => uiHelper.clearError());
-  elements.searchBtn.addEventListener("click", () => void searchContent());
+  elements.queryInput.addEventListener("input", () => {
+    uiHelper.clearError();
+    uiHelper.hideResults();
+  });
 
+  elements.searchBtn.addEventListener("click", () => void searchContent());
   elements.queryInput.focus();
+
+  async function handleResultSelect(result: SearchResult): Promise<void> {
+    try {
+      if (result.type === 'tab') {
+        const tabId = typeof result.id === 'string' ? parseInt(result.id, 10) : result.id;
+        const tab = await chrome.tabs.get(tabId);
+        if (tab && tab.id) {
+          await tabService.switchToTab(tab.id, tab.windowId);
+          console.log('Tab switched');
+          window.close();
+        }
+      } else {
+        const newTab = await bookmarkService.openBookmarkInNewTab(result.url);
+        if (newTab) {
+          console.log('Bookmark opened in new tab');
+          window.close();
+        }
+      }
+    } catch (e) {
+      console.error('Error handling result selection:', e);
+      uiHelper.showError('選択した項目を開けませんでした');
+    }
+  }
 
   async function searchContent(): Promise<void> {
     uiHelper.clearError();
+    uiHelper.hideResults();
 
     try {
       const result = await chrome.storage.sync.get(['geminiApiKey']);
@@ -56,29 +84,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const geminiService = new GeminiService(result.geminiApiKey);
       const searchResult = await geminiService.findContent(query, tabs, bookmarks);
 
-      // タブが見つかった場合
-      if (searchResult.selectedTab) {
-        const tab = await tabService.findTabById(tabs, searchResult.selectedTab.tab_id);
-        if (tab && tab.id) {
-          await tabService.switchToTab(tab.id, tab.windowId);
-          console.log('Tab switched');
-          window.close();
-          return;
-        }
+      // 結果が見つかった場合
+      if (searchResult.results.length > 0) {
+        uiHelper.showResults(searchResult.results, handleResultSelect);
+      } else {
+        uiHelper.showError(`「${query}」に関連するタブやブックマークが見つかりませんでした`);
       }
-
-      // ブックマークが見つかった場合
-      if (searchResult.selectedBookmark?.url) {
-        const newTab = await bookmarkService.openBookmarkInNewTab(searchResult.selectedBookmark.url);
-        if (newTab) {
-          console.log('Bookmark opened in new tab');
-          window.close();
-          return;
-        }
-      }
-
-      // 何も見つからなかった場合
-      uiHelper.showError(`「${query}」に関連するタブやブックマークが見つかりませんでした`);
 
     } catch (e) {
       console.error('Error:', e);

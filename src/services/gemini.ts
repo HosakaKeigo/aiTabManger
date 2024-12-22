@@ -1,20 +1,12 @@
+import { TabInfo, SearchResult, ParsedResponse } from '../types';
 import { BookmarkInfo } from './bookmark';
-
-interface SearchResponse {
-  selectedTab?: {
-    tab_id: number;
-  } | null;
-  selectedBookmark?: {
-    url: string;
-  } | null;
-}
 
 export class GeminiService {
   private readonly apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
   constructor(private readonly apiKey: string) { }
 
-  async findContent(query: string, tabs: chrome.tabs.Tab[], bookmarks: BookmarkInfo[]): Promise<SearchResponse> {
+  async findContent(query: string, tabs: chrome.tabs.Tab[], bookmarks: BookmarkInfo[]): Promise<ParsedResponse> {
     const requestBody = {
       contents: [{
         role: "user",
@@ -23,25 +15,31 @@ export class GeminiService {
         }]
       }],
       generationConfig: {
-        temperature: 0,
+        temperature: 0.3,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
         responseMimeType: "application/json",
         responseSchema: {
           type: "object",
           properties: {
-            selectedTab: {
-              type: "object",
-              properties: {
-                tab_id: { type: "number", nullable: true }
-              }
-            },
-            selectedBookmark: {
-              type: "object",
-              properties: {
-                url: { type: "string", nullable: true }
+            results: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string", enum: ["tab", "bookmark"] },
+                  id: { type: "number" },
+                  title: { type: "string" },
+                  url: { type: "string" },
+                  score: { type: "number" },
+                  reason: { type: "string" }
+                },
+                required: ["type", "id", "title", "url", "score", "reason"]
               }
             }
           },
-          required: ["selectedTab", "selectedBookmark"]
+          required: ["results"]
         }
       }
     };
@@ -69,7 +67,10 @@ export class GeminiService {
     }
 
     try {
-      return JSON.parse(candidateText.trim());
+      const parsedResponse = JSON.parse(candidateText.trim());
+      return {
+        results: this.sortResults(parsedResponse.results)
+      };
     } catch (e) {
       console.error('JSON Parse Error:', e);
       throw new Error('APIレスポンスのパースに失敗しました');
@@ -77,36 +78,33 @@ export class GeminiService {
   }
 
   private buildPrompt(query: string, tabs: chrome.tabs.Tab[], bookmarks: BookmarkInfo[]): string {
-    return `ユーザーの検索キーワード「${query}」に最も関連性の高いタブまたはブックマークを選んでください。
+    return `ユーザーの検索キーワード「${query}」に関連するタブとブックマークを探してください。
+関連度が高い順に最大5件まで候補を返してください。
+それぞれの候補について、関連度を0-100のスコアで示し、選んだ理由も付けてください。
 
 現在開いているタブのリスト:
-${JSON.stringify(tabs.map(t => ({ id: t.id, title: t.title, url: t.url })), null, 2)}
+${JSON.stringify(tabs, null, 2)}
 
 ブックマークのリスト:
 ${JSON.stringify(bookmarks, null, 2)}
 
 以下の形式でJSONを返してください:
-
-タブが見つかった場合:
 {
-  "selectedTab": {
-    "tab_id": [タブのID]
-  },
-  "selectedBookmark": null
-}
-
-タブが見つからず、ブックマークが見つかった場合:
-{
-  "selectedTab": null,
-  "selectedBookmark": {
-    "url": "[ブックマークのURL]"
-  }
-}
-
-何も見つからなかった場合:
-{
-  "selectedTab": null,
-  "selectedBookmark": null
+  "results": [
+    {
+      "type": "tab" または "bookmark",
+      "id": タブIDまたはブックマークID,
+      "title": "タイトル",
+      "url": "URL",
+      "score": 0-100の関連度スコア,
+      "reason": "選択した理由の説明"
+    },
+    ...
+  ]
 }`;
+  }
+
+  private sortResults(results: SearchResult[]): SearchResult[] {
+    return results.sort((a, b) => b.score - a.score);
   }
 }

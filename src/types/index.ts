@@ -1,3 +1,9 @@
+export interface TabInfo {
+  id: number;
+  title: string;
+  url: string;
+}
+
 export interface GeminiResponse {
   candidates?: Array<{
     content?: {
@@ -8,10 +14,17 @@ export interface GeminiResponse {
   }>;
 }
 
+export interface SearchResult {
+  type: 'tab' | 'bookmark';
+  id: number | string;
+  title: string;
+  url: string;
+  score: number;
+  reason: string;
+}
+
 export interface ParsedResponse {
-  selected_tab?: {
-    tab_id: number;
-  } | null;
+  results: SearchResult[];
 }
 
 export interface UIElements {
@@ -19,4 +32,5 @@ export interface UIElements {
   queryInput: HTMLInputElement;
   loadingElement: HTMLDivElement;
   errorMessage: HTMLDivElement;
+  resultsList: HTMLDivElement;
 }

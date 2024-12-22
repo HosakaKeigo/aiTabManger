@@ -49,13 +49,63 @@
       #errorMessage.active {
         display: block;
       }
+      /* 検索結果のスタイル */
+      .results {
+        margin-top: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .result-item {
+        padding: 8px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+      }
+      .result-item:hover {
+        background-color: #f5f5f5;
+      }
+      .result-item.selected {
+        background-color: #e9ecef;
+      }
+      .result-item .title {
+        font-weight: bold;
+        margin-bottom: 2px;
+      }
+      .result-item .url {
+        font-size: 12px;
+        color: #666;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .result-item .type-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-right: 8px;
+        flex-shrink: 0;
+      }
+      .type-badge.tab {
+        background-color: #007bff;
+        color: white;
+      }
+      .type-badge.bookmark {
+        background-color: #28a745;
+        color: white;
+      }
+      .result-content {
+        flex-grow: 1;
+        min-width: 0;
+      }
     </style>
   </head>
   <body>
-    <input type="text" id="query" placeholder="タブ名やキーワード" />
-    <button id="searchBtn">切り替え</button>
+    <input type="text" id="query" placeholder="タブ名やキーワード" autofocus />
+    <button id="searchBtn">検索</button>
     <div id="errorMessage"></div>
     <div id="loading" class="loading">検索中...</div>
+    <div id="resultsList" class="results" style="display: none;"></div>
 
     <script type="module" src="./index.ts"></script>
   </body>
